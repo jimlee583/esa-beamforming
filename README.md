@@ -252,3 +252,27 @@ curl -s http://localhost:8000/api/pattern \
 ```
 
 **Response fields:** `az_cut`, `el_cut` (each with `angles_deg`, `gain_db`, `label`), `peak_az_deg`, `peak_el_deg`, `peak_gain_db`, `n_elements`, `spacing_lambda`.
+
+### `POST /api/null_weights`
+
+Compute LCMV beamforming weights with null constraints toward jammer directions.
+
+```bash
+curl -s http://localhost:8000/api/null_weights \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "freq_hz": 10e9,
+    "panel_size_m": 0.3,
+    "lattice": "rectangular",
+    "element_k_lambda": 0.5,
+    "steer_az_deg": 0,
+    "steer_el_deg": 0,
+    "taper": "uniform",
+    "jammer_azels": [
+      {"az_deg": 25, "el_deg": 0},
+      {"az_deg": -30, "el_deg": 10}
+    ]
+  }' | python3 -m json.tool | head -30
+```
+
+**Response fields:** `n_elements`, `positions`, `phases_rad`, `weights_re_im` ([[re,im],...]), `spacing_m`, `spacing_lambda`, `constraint_residuals_re_im` ([[re,im],...]), `az_cut`, `el_cut`.

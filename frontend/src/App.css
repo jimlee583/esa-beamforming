@@ -100,6 +100,51 @@ header h1 {
   border-color: var(--accent);
 }
 
+/* ── Jammer rows ── */
+.jammer-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 32px;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.jammer-row input {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 6px;
+  font-size: 0.82rem;
+  width: 100%;
+}
+
+.remove-btn {
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--danger);
+  border-color: var(--danger);
+  background: transparent;
+  align-self: center;
+}
+
+.add-btn {
+  font-size: 0.78rem;
+  padding: 4px 8px;
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  background: transparent;
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+.add-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 /* ── Buttons ── */
 .btn-group {
   display: flex;
@@ -136,6 +181,15 @@ button.primary {
 
 button.primary:hover:not(:disabled) {
   background: var(--accent-hover);
+}
+
+button.nulling {
+  background: #d97706;
+  border-color: #d97706;
+}
+
+button.nulling:hover:not(:disabled) {
+  background: #b45309;
 }
 
 /* ── Error ── */

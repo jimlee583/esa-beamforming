@@ -44,3 +44,33 @@ export interface PatternResponse {
   n_elements: number;
   spacing_lambda: number;
 }
+
+export interface AzEl {
+  az_deg: number;
+  el_deg: number;
+}
+
+export interface NullWeightsRequest {
+  freq_hz: number;
+  panel_size_m: number;
+  lattice: LatticeType;
+  spacing_m?: number | null;
+  element_k_lambda: number;
+  steer_az_deg: number;
+  steer_el_deg: number;
+  taper: TaperType;
+  jammer_azels: AzEl[];
+  diag_load?: number;
+}
+
+export interface NullWeightsResponse {
+  n_elements: number;
+  positions: number[][];
+  phases_rad: number[];
+  weights_re_im: number[][];
+  spacing_m: number;
+  spacing_lambda: number;
+  constraint_residuals_re_im: number[][];
+  az_cut: PatternCut | null;
+  el_cut: PatternCut | null;
+}

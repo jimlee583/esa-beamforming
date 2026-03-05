@@ -62,6 +62,18 @@ class PatternRequest(WeightsRequest):
     n_points: int = Field(361, ge=10, le=3601, description="Points per cut")
 
 
+class AzEl(BaseModel):
+    az_deg: float
+    el_deg: float
+
+
+class NullWeightsRequest(WeightsRequest):
+    """Same array parameters as WeightsRequest, plus jammer directions."""
+
+    jammer_azels: list[AzEl] = Field(..., min_length=1, description="Jammer directions to null")
+    diag_load: float = Field(1e-6, gt=0, description="Diagonal loading for LCMV")
+
+
 # ── Response models ─────────────────────────────────────────────────────────
 
 
@@ -90,3 +102,19 @@ class PatternResponse(BaseModel):
     peak_gain_db: float
     n_elements: int
     spacing_lambda: float
+
+
+class NullWeightsResponse(BaseModel):
+    n_elements: int
+    positions: list[list[float]] = Field(
+        ..., description="Element positions [[x,y,z], ...] in metres"
+    )
+    phases_rad: list[float]
+    weights_re_im: list[list[float]] = Field(..., description="Complex weights as [[re, im], ...]")
+    spacing_m: float
+    spacing_lambda: float
+    constraint_residuals_re_im: list[list[float]] = Field(
+        ..., description="Constraint residuals as [[re, im], ...]"
+    )
+    az_cut: PatternCut | None = None
+    el_cut: PatternCut | None = None
