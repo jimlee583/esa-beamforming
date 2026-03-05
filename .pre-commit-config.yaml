@@ -1,0 +1,39 @@
+repos:
+  # ── Housekeeping ────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+
+  # ── Ruff (lint + format) ────────────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.12
+    hooks:
+      - id: ruff
+        args: [--fix, --config, backend/pyproject.toml]
+      - id: ruff-format
+        args: [--config, backend/pyproject.toml]
+
+  # ── mypy ────────────────────────────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: bash -c 'cd backend && uv run mypy'
+        language: system
+        types: [python]
+        pass_filenames: false
+
+  # ── pytest (fast) ───────────────────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: bash -c 'cd backend && uv run pytest -x -q'
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]
