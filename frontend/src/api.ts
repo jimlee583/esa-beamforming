@@ -1,4 +1,11 @@
-import type { WeightsRequest, WeightsResponse, PatternRequest, PatternResponse } from "./types";
+import type {
+  NullWeightsRequest,
+  NullWeightsResponse,
+  PatternRequest,
+  PatternResponse,
+  WeightsRequest,
+  WeightsResponse,
+} from "./types";
 
 const BASE = "/api";
 
@@ -21,4 +28,8 @@ export function computeWeights(req: WeightsRequest): Promise<WeightsResponse> {
 
 export function computePattern(req: PatternRequest): Promise<PatternResponse> {
   return post<PatternResponse>("/pattern", req);
+}
+
+export function computeNullWeights(req: NullWeightsRequest): Promise<NullWeightsResponse> {
+  return post<NullWeightsResponse>("/null_weights", req);
 }

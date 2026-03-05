@@ -1,11 +1,12 @@
 import { useState, useCallback } from "react";
 import Plot from "react-plotly.js";
-import { computeWeights, computePattern } from "./api";
+import { computeWeights, computePattern, computeNullWeights } from "./api";
 import type {
   WeightsRequest,
   WeightsResponse,
-  PatternRequest,
   PatternResponse,
+  NullWeightsResponse,
+  AzEl,
   LatticeType,
 } from "./types";
 import "./App.css";
@@ -22,8 +23,10 @@ const DEFAULTS: WeightsRequest = {
 
 function App() {
   const [form, setForm] = useState(DEFAULTS);
+  const [jammers, setJammers] = useState<AzEl[]>([]);
   const [weightsData, setWeightsData] = useState<WeightsResponse | null>(null);
   const [patternData, setPatternData] = useState<PatternResponse | null>(null);
+  const [nullData, setNullData] = useState<NullWeightsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,40 +34,25 @@ function App() {
     (key: keyof WeightsRequest, value: string | number) => {
       setForm((prev) => ({ ...prev, [key]: value }));
     },
-    []
+    [],
   );
 
-  const handleWeights = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await computeWeights(form);
-      setWeightsData(data);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [form]);
+  const addJammer = useCallback(() => {
+    setJammers((prev) => [...prev, { az_deg: 30, el_deg: 0 }]);
+  }, []);
 
-  const handlePattern = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const req: PatternRequest = {
-        ...form,
-        az_range_deg: 90,
-        el_range_deg: 90,
-        n_points: 601,
-      };
-      const data = await computePattern(req);
-      setPatternData(data);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [form]);
+  const removeJammer = useCallback((idx: number) => {
+    setJammers((prev) => prev.filter((_, i) => i !== idx));
+  }, []);
+
+  const updateJammer = useCallback(
+    (idx: number, field: keyof AzEl, value: number) => {
+      setJammers((prev) =>
+        prev.map((j, i) => (i === idx ? { ...j, [field]: value } : j)),
+      );
+    },
+    [],
+  );
 
   const handleBoth = useCallback(async () => {
     setLoading(true);
@@ -88,6 +76,39 @@ function App() {
     }
   }, [form]);
 
+  const handleNulling = useCallback(async () => {
+    if (jammers.length === 0) {
+      setError("Add at least one jammer direction.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const [w, p, n] = await Promise.all([
+        computeWeights(form),
+        computePattern({
+          ...form,
+          az_range_deg: 90,
+          el_range_deg: 90,
+          n_points: 601,
+        }),
+        computeNullWeights({
+          ...form,
+          jammer_azels: jammers,
+        }),
+      ]);
+      setWeightsData(w);
+      setPatternData(p);
+      setNullData(n);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [form, jammers]);
+
+  const hasNullOverlay = nullData?.az_cut && nullData?.el_cut;
+
   return (
     <div className="app">
       <header>
@@ -105,7 +126,9 @@ function App() {
               type="number"
               step="0.1"
               value={form.freq_hz / 1e9}
-              onChange={(e) => set("freq_hz", parseFloat(e.target.value) * 1e9)}
+              onChange={(e) =>
+                set("freq_hz", parseFloat(e.target.value) * 1e9)
+              }
             />
           </label>
 
@@ -115,7 +138,9 @@ function App() {
               type="number"
               step="0.05"
               value={form.panel_size_m}
-              onChange={(e) => set("panel_size_m", parseFloat(e.target.value))}
+              onChange={(e) =>
+                set("panel_size_m", parseFloat(e.target.value))
+              }
             />
           </label>
 
@@ -170,22 +195,60 @@ function App() {
             />
           </label>
 
+          {/* ── Jammers ── */}
+          <h2>Jammer Nulls</h2>
+          {jammers.map((j, i) => (
+            <div className="jammer-row" key={i}>
+              <input
+                type="number"
+                step="1"
+                placeholder="az"
+                value={j.az_deg}
+                onChange={(e) =>
+                  updateJammer(i, "az_deg", parseFloat(e.target.value))
+                }
+                title="Jammer azimuth (deg)"
+              />
+              <input
+                type="number"
+                step="1"
+                placeholder="el"
+                value={j.el_deg}
+                onChange={(e) =>
+                  updateJammer(i, "el_deg", parseFloat(e.target.value))
+                }
+                title="Jammer elevation (deg)"
+              />
+              <button
+                className="remove-btn"
+                onClick={() => removeJammer(i)}
+                title="Remove jammer"
+              >
+                &times;
+              </button>
+            </div>
+          ))}
+          <button className="add-btn" onClick={addJammer}>
+            + Add Jammer
+          </button>
+
           <div className="btn-group">
-            <button onClick={handleWeights} disabled={loading}>
-              Compute Weights
-            </button>
-            <button onClick={handlePattern} disabled={loading}>
-              Compute Pattern
-            </button>
             <button className="primary" onClick={handleBoth} disabled={loading}>
               Compute Both
+            </button>
+            <button
+              className="primary nulling"
+              onClick={handleNulling}
+              disabled={loading || jammers.length === 0}
+            >
+              Compute Nulling
             </button>
           </div>
 
           {error && <p className="error">{error}</p>}
 
           {/* ── Metrics card ── */}
-          {(weightsData || patternData) && (
+          {(weightsData || patternData || nullData) && (
             <div className="metrics">
               <h2>Metrics</h2>
               <table>
@@ -198,7 +261,9 @@ function App() {
                       </tr>
                       <tr>
                         <td>Spacing</td>
-                        <td>{weightsData.spacing_lambda.toFixed(3)} &lambda;</td>
+                        <td>
+                          {weightsData.spacing_lambda.toFixed(3)} &lambda;
+                        </td>
                       </tr>
                     </>
                   )}
@@ -213,9 +278,17 @@ function App() {
                       </tr>
                       <tr>
                         <td>Peak gain</td>
-                        <td>{patternData.peak_gain_db.toFixed(1)} dB (norm.)</td>
+                        <td>
+                          {patternData.peak_gain_db.toFixed(1)} dB (norm.)
+                        </td>
                       </tr>
                     </>
+                  )}
+                  {nullData && (
+                    <tr>
+                      <td>LCMV nulls</td>
+                      <td>{nullData.constraint_residuals_re_im.length - 1}</td>
+                    </tr>
                   )}
                 </tbody>
               </table>
@@ -227,7 +300,9 @@ function App() {
         <section className="plots">
           {weightsData && (
             <div className="plot-card">
-              <h2>Element Phases</h2>
+              <h2>
+                Element Phases{nullData ? " (conventional)" : ""}
+              </h2>
               <Plot
                 data={[
                   {
@@ -237,6 +312,38 @@ function App() {
                     type: "scatter",
                     marker: {
                       color: weightsData.phases_rad,
+                      colorscale: "RdBu",
+                      size: 6,
+                      colorbar: { title: "Phase (rad)" },
+                      reversescale: true,
+                    },
+                    name: "Conventional",
+                  },
+                ]}
+                layout={{
+                  xaxis: { title: "x (mm)", scaleanchor: "y" },
+                  yaxis: { title: "y (mm)" },
+                  margin: { t: 10, r: 30, b: 50, l: 60 },
+                  height: 380,
+                }}
+                config={{ responsive: true }}
+                style={{ width: "100%" }}
+              />
+            </div>
+          )}
+
+          {nullData && (
+            <div className="plot-card">
+              <h2>Element Phases (LCMV nulling)</h2>
+              <Plot
+                data={[
+                  {
+                    x: nullData.positions.map((p) => p[0] * 1000),
+                    y: nullData.positions.map((p) => p[1] * 1000),
+                    mode: "markers",
+                    type: "scatter",
+                    marker: {
+                      color: nullData.phases_rad,
                       colorscale: "RdBu",
                       size: 6,
                       colorbar: { title: "Phase (rad)" },
@@ -259,7 +366,7 @@ function App() {
           {patternData && (
             <>
               <div className="plot-card">
-                <h2>{patternData.az_cut.label}</h2>
+                <h2>Azimuth Cut</h2>
                 <Plot
                   data={[
                     {
@@ -268,20 +375,43 @@ function App() {
                       type: "scatter",
                       mode: "lines",
                       line: { color: "#2563eb", width: 1.5 },
+                      name: "Conventional",
                     },
+                    ...(hasNullOverlay
+                      ? [
+                          {
+                            x: nullData.az_cut!.angles_deg,
+                            y: nullData.az_cut!.gain_db,
+                            type: "scatter" as const,
+                            mode: "lines" as const,
+                            line: { color: "#f59e0b", width: 2, dash: "dot" as const },
+                            name: "LCMV nulling",
+                          },
+                        ]
+                      : []),
                   ]}
                   layout={{
-                    xaxis: { title: "Azimuth (°)" },
-                    yaxis: { title: "Gain (dB)", range: [-50, 1] },
+                    xaxis: { title: "Azimuth (deg)" },
+                    yaxis: { title: "Gain (dB)", range: [-60, 1] },
                     margin: { t: 10, r: 20, b: 50, l: 60 },
-                    height: 300,
+                    height: 320,
+                    showlegend: !!hasNullOverlay,
+                    legend: { x: 0.01, y: 0.99 },
+                    shapes: jammers.map((j) => ({
+                      type: "line" as const,
+                      x0: j.az_deg,
+                      x1: j.az_deg,
+                      y0: -60,
+                      y1: 1,
+                      line: { color: "#ef4444", width: 1, dash: "dash" as const },
+                    })),
                   }}
                   config={{ responsive: true }}
                   style={{ width: "100%" }}
                 />
               </div>
               <div className="plot-card">
-                <h2>{patternData.el_cut.label}</h2>
+                <h2>Elevation Cut</h2>
                 <Plot
                   data={[
                     {
@@ -290,13 +420,36 @@ function App() {
                       type: "scatter",
                       mode: "lines",
                       line: { color: "#dc2626", width: 1.5 },
+                      name: "Conventional",
                     },
+                    ...(hasNullOverlay
+                      ? [
+                          {
+                            x: nullData.el_cut!.angles_deg,
+                            y: nullData.el_cut!.gain_db,
+                            type: "scatter" as const,
+                            mode: "lines" as const,
+                            line: { color: "#f59e0b", width: 2, dash: "dot" as const },
+                            name: "LCMV nulling",
+                          },
+                        ]
+                      : []),
                   ]}
                   layout={{
-                    xaxis: { title: "Elevation (°)" },
-                    yaxis: { title: "Gain (dB)", range: [-50, 1] },
+                    xaxis: { title: "Elevation (deg)" },
+                    yaxis: { title: "Gain (dB)", range: [-60, 1] },
                     margin: { t: 10, r: 20, b: 50, l: 60 },
-                    height: 300,
+                    height: 320,
+                    showlegend: !!hasNullOverlay,
+                    legend: { x: 0.01, y: 0.99 },
+                    shapes: jammers.map((j) => ({
+                      type: "line" as const,
+                      x0: j.el_deg,
+                      x1: j.el_deg,
+                      y0: -60,
+                      y1: 1,
+                      line: { color: "#ef4444", width: 1, dash: "dash" as const },
+                    })),
                   }}
                   config={{ responsive: true }}
                   style={{ width: "100%" }}
@@ -307,7 +460,10 @@ function App() {
 
           {!weightsData && !patternData && (
             <div className="placeholder">
-              <p>Configure parameters and click <strong>Compute Both</strong> to see results.</p>
+              <p>
+                Configure parameters and click{" "}
+                <strong>Compute Both</strong> to see results.
+              </p>
             </div>
           )}
         </section>
