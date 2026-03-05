@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from array_engine.steering import azel_to_unit_vector
+
 
 def array_factor(
     positions: np.ndarray,
@@ -46,14 +48,9 @@ def array_factor(
     # Broadcast az and el to the same shape before computing
     az_b, el_b = np.broadcast_arrays(az, el)
     out_shape = az_b.shape
-    az_r = np.radians(az_b.ravel())
-    el_r = np.radians(el_b.ravel())
 
     # Unit vectors for every scan angle — shape (M, 3)
-    ux = np.sin(az_r) * np.cos(el_r)
-    uy = np.sin(el_r)
-    uz = np.cos(az_r) * np.cos(el_r)
-    u_mat = np.column_stack([ux, uy, uz])  # (M, 3)
+    u_mat = azel_to_unit_vector(az_b.ravel(), el_b.ravel()).T  # (M, 3)
 
     # k * positions @ u^T  → (N, M)
     phase_matrix = k * (positions @ u_mat.T)  # (N, M)
