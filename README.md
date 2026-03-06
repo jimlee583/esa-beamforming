@@ -60,6 +60,8 @@ esa-beamforming/
 │   ├── geometry.py            # Rectangular & triangular lattice generators
 │   ├── steering.py            # az/el → unit vector, steering phases & weights
 │   ├── pattern.py             # Array factor & pattern cuts
+│   ├── nulling.py             # LCMV null-steering weights
+│   ├── analysis.py            # Null-depth-vs-phase-bits analysis
 │   └── models.py              # Pydantic models (shared with backend)
 ├── backend/                   # FastAPI service
 │   ├── pyproject.toml         # uv deps + ruff/mypy/pytest config
@@ -73,11 +75,14 @@ esa-beamforming/
 │       ├── App.tsx            # Main component
 │       ├── api.ts             # API client
 │       └── types.ts           # TS types mirroring backend models
-├── tests/                     # pytest test suite (32 tests, <1s)
+├── tests/                     # pytest test suite
 │   ├── test_steering.py       # Convention & sign tests
 │   ├── test_pattern.py        # Pattern peak tests
 │   ├── test_golden.py         # Hand-calculated golden-reference tests
 │   ├── test_geometry.py       # Lattice generator tests
+│   ├── test_nulling.py        # LCMV nulling tests
+│   ├── test_quantization.py   # Phase quantisation tests
+│   ├── test_null_depth_analysis.py  # Null depth vs phase bits tests
 │   └── test_api.py            # API integration tests
 ├── .github/workflows/ci.yml   # GitHub Actions (lint + type-check + test + build)
 ├── .pre-commit-config.yaml    # Pre-commit hooks
@@ -281,3 +286,54 @@ curl -s http://localhost:8000/api/null_weights \
 ```
 
 **Response fields:** `n_elements`, `positions`, `phases_rad`, `weights_re_im` ([[re,im],...]), `spacing_m`, `spacing_lambda`, `constraint_residuals_re_im` ([[re,im],...]), `az_cut`, `el_cut`.
+
+### `POST /api/null_depth_vs_bits`
+
+Analyse how jammer null depth degrades as phase-shifter resolution is reduced.
+
+LCMV nulling weights are computed once with continuous (infinite-precision) phases. For each requested bit setting the element phases are quantised to that grid while keeping original amplitudes, and the achieved null depth at every jammer direction is measured.
+
+**Null depth convention (relative):**
+```
+null_depth_db = 20 · log10(|w^T a(u_j)| / |w^T a(u_0)|)
+```
+A more negative value means better suppression. Continuous LCMV weights drive this to −∞; coarser phase quantisation raises it toward 0 dB.
+
+**Why nulls degrade with coarse phase quantisation:** LCMV weights place precise destructive interference at each jammer direction. Quantising phases to a coarse grid perturbs the element-level phase from its ideal value, breaking the exact cancellation. With fewer bits the available phase states are farther apart, so the residual error grows and the null fills in. Finer phase shifters (more bits) allow closer approximation to the continuous optimum.
+
+```bash
+curl -s http://localhost:8000/api/null_depth_vs_bits \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "freq_hz": 10e9,
+    "panel_size_m": 0.3,
+    "lattice": "rectangular",
+    "element_k_lambda": 0.5,
+    "steer_az_deg": 0,
+    "steer_el_deg": 0,
+    "taper": "uniform",
+    "jammer_azels": [
+      {"az_deg": 25, "el_deg": 0},
+      {"az_deg": -30, "el_deg": 10}
+    ],
+    "bit_settings": [3, 4, 5, 6, 7],
+    "include_continuous": true
+  }' | python3 -m json.tool | head -40
+```
+
+**Request fields:** Same array/beam/null inputs as `/api/null_weights`, plus `bit_settings` (list of integers, default `[3,4,5,6,7]`) and `include_continuous` (boolean, default `true`).
+
+**Response fields:**
+- `results` — array of per-bit-setting objects, each containing:
+  - `label` — `"continuous"`, `"3-bit"`, etc.
+  - `bits` — integer or `null` for continuous
+  - `desired_gain_mag` — |w^T a(u₀)|
+  - `jammer_response_mag` — per-jammer |w^T a(uⱼ)|
+  - `null_depth_db` — per-jammer null depth in dB (relative to desired)
+  - `worst_null_depth_db` — worst (shallowest) null across all jammers
+- `jammer_labels` — human-readable jammer direction strings
+- `summary` — `continuous_worst_null_db`, `best_quantized_worst_null_db`, `best_quantized_label`
+
+**Frontend plots:**
+- **Line chart:** x = phase bits, y = null depth (dB). One line per jammer plus a worst-case line. Continuous baseline shown as a horizontal reference.
+- **Detail table:** desired gain, per-jammer null depth, and worst-case null depth for every bit setting.

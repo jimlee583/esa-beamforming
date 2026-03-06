@@ -1,4 +1,6 @@
 import type {
+  NullDepthVsBitsRequest,
+  NullDepthVsBitsResponse,
   NullWeightsRequest,
   NullWeightsResponse,
   PatternRequest,
@@ -32,4 +34,10 @@ export function computePattern(req: PatternRequest): Promise<PatternResponse> {
 
 export function computeNullWeights(req: NullWeightsRequest): Promise<NullWeightsResponse> {
   return post<NullWeightsResponse>("/null_weights", req);
+}
+
+export function computeNullDepthVsBits(
+  req: NullDepthVsBitsRequest,
+): Promise<NullDepthVsBitsResponse> {
+  return post<NullDepthVsBitsResponse>("/null_depth_vs_bits", req);
 }

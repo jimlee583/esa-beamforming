@@ -13,8 +13,11 @@ Internally every direction is a 3-element unit vector  u = [ux, uy, uz].
 az/el are converted to u via :func:`steering.azel_to_unit_vector`.
 """
 
+from array_engine.analysis import compute_null_depth_vs_phase_bits
 from array_engine.geometry import rectangular_lattice, triangular_lattice
 from array_engine.models import (
+    NullDepthVsBitsRequest,
+    NullDepthVsBitsResponse,
     NullWeightsRequest,
     NullWeightsResponse,
     PatternCut,
@@ -33,6 +36,8 @@ from array_engine.steering import (
 )
 
 __all__ = [
+    "NullDepthVsBitsRequest",
+    "NullDepthVsBitsResponse",
     "NullWeightsRequest",
     "NullWeightsResponse",
     "PatternCut",
@@ -43,6 +48,7 @@ __all__ = [
     "array_factor",
     "azel_to_unit_vector",
     "compute_lcmv_weights",
+    "compute_null_depth_vs_phase_bits",
     "pattern_cut",
     "quantize_phase",
     "rectangular_lattice",

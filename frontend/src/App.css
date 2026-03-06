@@ -192,6 +192,15 @@ button.nulling:hover:not(:disabled) {
   background: #b45309;
 }
 
+button.analysis {
+  background: #7c3aed;
+  border-color: #7c3aed;
+}
+
+button.analysis:hover:not(:disabled) {
+  background: #6d28d9;
+}
+
 /* ── Error ── */
 .error {
   color: var(--danger);
@@ -244,6 +253,41 @@ button.nulling:hover:not(:disabled) {
 /* Override Plotly background */
 .plot-card .js-plotly-plot .plotly .main-svg {
   background: transparent !important;
+}
+
+/* ── Analysis table ── */
+.analysis-table-wrap {
+  overflow-x: auto;
+}
+
+.analysis-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.analysis-table th,
+.analysis-table td {
+  padding: 6px 10px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+
+.analysis-table th {
+  color: var(--muted);
+  font-weight: 500;
+  text-align: right;
+}
+
+.analysis-table th:first-child,
+.analysis-table td:first-child {
+  text-align: left;
+}
+
+.analysis-table .row-continuous {
+  background: rgba(59, 130, 246, 0.1);
+  font-weight: 600;
 }
 
 /* ── Placeholder ── */

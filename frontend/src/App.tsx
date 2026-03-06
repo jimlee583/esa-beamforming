@@ -1,11 +1,17 @@
 import { useState, useCallback } from "react";
 import Plot from "react-plotly.js";
-import { computeWeights, computePattern, computeNullWeights } from "./api";
+import {
+  computeWeights,
+  computePattern,
+  computeNullWeights,
+  computeNullDepthVsBits,
+} from "./api";
 import type {
   WeightsRequest,
   WeightsResponse,
   PatternResponse,
   NullWeightsResponse,
+  NullDepthVsBitsResponse,
   AzEl,
   LatticeType,
 } from "./types";
@@ -39,6 +45,8 @@ function App() {
   const [weightsData, setWeightsData] = useState<WeightsResponse | null>(null);
   const [patternData, setPatternData] = useState<PatternResponse | null>(null);
   const [nullData, setNullData] = useState<NullWeightsResponse | null>(null);
+  const [nullDepthData, setNullDepthData] =
+    useState<NullDepthVsBitsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,6 +121,28 @@ function App() {
       setWeightsData(w);
       setPatternData(p);
       setNullData(n);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [form, jammers]);
+
+  const handleNullDepthAnalysis = useCallback(async () => {
+    if (jammers.length === 0) {
+      setError("Add at least one jammer direction.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await computeNullDepthVsBits({
+        ...form,
+        jammer_azels: jammers,
+        bit_settings: [3, 4, 5, 6, 7],
+        include_continuous: true,
+      });
+      setNullDepthData(resp);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -278,6 +308,13 @@ function App() {
               disabled={loading || jammers.length === 0}
             >
               Compute Nulling
+            </button>
+            <button
+              className="primary analysis"
+              onClick={handleNullDepthAnalysis}
+              disabled={loading || jammers.length === 0}
+            >
+              Analyze Null Depth vs Bits
             </button>
           </div>
 
@@ -560,7 +597,131 @@ function App() {
             </>
           )}
 
-          {!weightsData && !patternData && (
+          {nullDepthData && (
+            <>
+              <div className="plot-card">
+                <h2>Null Depth vs Phase Bits</h2>
+                <Plot
+                  data={(() => {
+                    const quantResults = nullDepthData.results.filter(
+                      (r) => r.bits !== null,
+                    );
+                    const contResult = nullDepthData.results.find(
+                      (r) => r.bits === null,
+                    );
+                    const xBits = quantResults.map((r) => r.bits!);
+
+                    const traces: Array<Record<string, unknown>> = [];
+
+                    const jammerColors = [
+                      "#ef4444",
+                      "#f59e0b",
+                      "#10b981",
+                      "#8b5cf6",
+                      "#ec4899",
+                    ];
+                    nullDepthData.jammer_labels.forEach((label, ji) => {
+                      traces.push({
+                        x: xBits,
+                        y: quantResults.map((r) => r.null_depth_db[ji]),
+                        type: "scatter",
+                        mode: "lines+markers",
+                        line: {
+                          color: jammerColors[ji % jammerColors.length],
+                          width: 2,
+                        },
+                        marker: { size: 6 },
+                        name: label,
+                      });
+                    });
+
+                    traces.push({
+                      x: xBits,
+                      y: quantResults.map((r) => r.worst_null_depth_db),
+                      type: "scatter",
+                      mode: "lines+markers",
+                      line: { color: "#ffffff", width: 2, dash: "dash" },
+                      marker: { size: 7, symbol: "diamond" },
+                      name: "Worst-case",
+                    });
+
+                    if (contResult) {
+                      traces.push({
+                        x: [xBits[0], xBits[xBits.length - 1]],
+                        y: [
+                          contResult.worst_null_depth_db,
+                          contResult.worst_null_depth_db,
+                        ],
+                        type: "scatter",
+                        mode: "lines",
+                        line: {
+                          color: "#6b7280",
+                          width: 1.5,
+                          dash: "dot",
+                        },
+                        name: "Continuous baseline",
+                      });
+                    }
+
+                    return traces;
+                  })()}
+                  layout={{
+                    xaxis: {
+                      title: "Phase Bits",
+                      dtick: 1,
+                    },
+                    yaxis: { title: "Null Depth (dB re desired)" },
+                    margin: { t: 10, r: 20, b: 50, l: 60 },
+                    height: 360,
+                    showlegend: true,
+                    legend: { x: 0.01, y: 0.01, yanchor: "bottom" },
+                    paper_bgcolor: "transparent",
+                    plot_bgcolor: "transparent",
+                    font: { color: "#e2e8f0" },
+                  }}
+                  config={{ responsive: true }}
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              <div className="plot-card">
+                <h2>Null Depth Detail</h2>
+                <div className="analysis-table-wrap">
+                  <table className="analysis-table">
+                    <thead>
+                      <tr>
+                        <th>Setting</th>
+                        <th>Desired Gain</th>
+                        {nullDepthData.jammer_labels.map((l, i) => (
+                          <th key={i}>Null {l}</th>
+                        ))}
+                        <th>Worst Null</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {nullDepthData.results.map((r, i) => (
+                        <tr
+                          key={i}
+                          className={
+                            r.bits === null ? "row-continuous" : undefined
+                          }
+                        >
+                          <td>{r.label}</td>
+                          <td>{r.desired_gain_mag.toFixed(4)}</td>
+                          {r.null_depth_db.map((nd, j) => (
+                            <td key={j}>{nd.toFixed(1)} dB</td>
+                          ))}
+                          <td>{r.worst_null_depth_db.toFixed(1)} dB</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+
+          {!weightsData && !patternData && !nullDepthData && (
             <div className="placeholder">
               <p>
                 Configure parameters and click{" "}

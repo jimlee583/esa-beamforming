@@ -5,9 +5,14 @@ from __future__ import annotations
 import numpy as np
 from fastapi import APIRouter
 
+from array_engine.analysis import compute_null_depth_vs_phase_bits
 from array_engine.geometry import rectangular_lattice, triangular_lattice
 from array_engine.models import (
+    BitSettingResultModel,
     LatticeType,
+    NullDepthSummary,
+    NullDepthVsBitsRequest,
+    NullDepthVsBitsResponse,
     NullWeightsRequest,
     NullWeightsResponse,
     PatternRequest,
@@ -77,9 +82,7 @@ def compute_weights(req: WeightsRequest) -> WeightsResponse:
         )
         resp.phase_bits = req.phase_bits
         resp.quantized_phases_rad = q_phases.tolist()
-        resp.quantized_weights_re_im = [
-            [float(w.real), float(w.imag)] for w in q_weights
-        ]
+        resp.quantized_weights_re_im = [[float(w.real), float(w.imag)] for w in q_weights]
 
     return resp
 
@@ -235,5 +238,47 @@ def compute_null_weights(req: NullWeightsRequest) -> NullWeightsResponse:
             angles_deg=el_angles.tolist(),
             gain_db=el_gain.tolist(),
             label="El cut (LCMV)",
+        ),
+    )
+
+
+@router.post("/null_depth_vs_bits", response_model=NullDepthVsBitsResponse)
+def null_depth_vs_bits(req: NullDepthVsBitsRequest) -> NullDepthVsBitsResponse:
+    positions, _d = _build_array(req)
+
+    jammer_tuples = [(j.az_deg, j.el_deg) for j in req.jammer_azels]
+
+    bit_settings: list[int | None] = []
+    if req.include_continuous:
+        bit_settings.append(None)
+    bit_settings.extend(req.bit_settings)
+
+    analysis = compute_null_depth_vs_phase_bits(
+        positions,
+        req.freq_hz,
+        req.steer_az_deg,
+        req.steer_el_deg,
+        jammer_tuples,
+        bit_settings,
+        diag_load=req.diag_load,
+    )
+
+    return NullDepthVsBitsResponse(
+        results=[
+            BitSettingResultModel(
+                label=r.label,
+                bits=r.bits,
+                desired_gain_mag=r.desired_gain_mag,
+                jammer_response_mag=r.jammer_response_mag,
+                null_depth_db=r.null_depth_db,
+                worst_null_depth_db=r.worst_null_depth_db,
+            )
+            for r in analysis.bit_settings_results
+        ],
+        jammer_labels=analysis.jammer_labels,
+        summary=NullDepthSummary(
+            continuous_worst_null_db=analysis.continuous_worst_null_db,
+            best_quantized_worst_null_db=analysis.best_quantized_worst_null_db,
+            best_quantized_label=analysis.best_quantized_label,
         ),
     )
