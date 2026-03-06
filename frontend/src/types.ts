@@ -12,6 +12,7 @@ export interface WeightsRequest {
   steer_az_deg: number;
   steer_el_deg: number;
   taper: TaperType;
+  phase_bits?: number | null;
 }
 
 export interface PatternRequest extends WeightsRequest {
@@ -27,6 +28,9 @@ export interface WeightsResponse {
   weights_re_im: number[][];
   spacing_m: number;
   spacing_lambda: number;
+  phase_bits?: number | null;
+  quantized_phases_rad?: number[] | null;
+  quantized_weights_re_im?: number[][] | null;
 }
 
 export interface PatternCut {
@@ -43,6 +47,9 @@ export interface PatternResponse {
   peak_gain_db: number;
   n_elements: number;
   spacing_lambda: number;
+  phase_bits?: number | null;
+  quantized_az_cut?: PatternCut | null;
+  quantized_el_cut?: PatternCut | null;
 }
 
 export interface AzEl {

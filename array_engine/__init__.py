@@ -27,6 +27,7 @@ from array_engine.nulling import compute_lcmv_weights
 from array_engine.pattern import array_factor, pattern_cut
 from array_engine.steering import (
     azel_to_unit_vector,
+    quantize_phase,
     steering_phases,
     steering_weights,
 )
@@ -43,6 +44,7 @@ __all__ = [
     "azel_to_unit_vector",
     "compute_lcmv_weights",
     "pattern_cut",
+    "quantize_phase",
     "rectangular_lattice",
     "steering_phases",
     "steering_weights",

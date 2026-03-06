@@ -48,6 +48,12 @@ class WeightsRequest(BaseModel):
     steer_el_deg: float = Field(0.0, description="Steering elevation in degrees")
     taper: TaperType = TaperType.uniform
     coordinate_frame: CoordinateFrame = CoordinateFrame.array
+    phase_bits: int | None = Field(
+        None,
+        ge=1,
+        le=12,
+        description="Phase-shifter resolution in bits (None = continuous)",
+    )
 
 
 class PatternRequest(WeightsRequest):
@@ -86,6 +92,11 @@ class WeightsResponse(BaseModel):
     weights_re_im: list[list[float]] = Field(..., description="Complex weights as [[re, im], …]")
     spacing_m: float
     spacing_lambda: float
+    phase_bits: int | None = None
+    quantized_phases_rad: list[float] | None = None
+    quantized_weights_re_im: list[list[float]] | None = Field(
+        None, description="Quantized complex weights as [[re, im], …]"
+    )
 
 
 class PatternCut(BaseModel):
@@ -102,6 +113,9 @@ class PatternResponse(BaseModel):
     peak_gain_db: float
     n_elements: int
     spacing_lambda: float
+    phase_bits: int | None = None
+    quantized_az_cut: PatternCut | None = None
+    quantized_el_cut: PatternCut | None = None
 
 
 class NullWeightsResponse(BaseModel):
