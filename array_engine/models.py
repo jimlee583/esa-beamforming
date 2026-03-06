@@ -131,3 +131,40 @@ class NullWeightsResponse(BaseModel):
     )
     az_cut: PatternCut | None = None
     el_cut: PatternCut | None = None
+
+
+# ── Null depth vs phase bits ────────────────────────────────────────────────
+
+
+class NullDepthVsBitsRequest(NullWeightsRequest):
+    """Analyse null depth degradation across phase-bit settings."""
+
+    bit_settings: list[int] = Field(
+        default=[3, 4, 5, 6, 7],
+        description="Phase-shifter bit counts to evaluate",
+    )
+    include_continuous: bool = Field(
+        default=True,
+        description="Include unquantised (continuous) baseline",
+    )
+
+
+class BitSettingResultModel(BaseModel):
+    label: str
+    bits: int | None = None
+    desired_gain_mag: float
+    jammer_response_mag: list[float]
+    null_depth_db: list[float]
+    worst_null_depth_db: float
+
+
+class NullDepthSummary(BaseModel):
+    continuous_worst_null_db: float
+    best_quantized_worst_null_db: float | None = None
+    best_quantized_label: str | None = None
+
+
+class NullDepthVsBitsResponse(BaseModel):
+    results: list[BitSettingResultModel]
+    jammer_labels: list[str]
+    summary: NullDepthSummary

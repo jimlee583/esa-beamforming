@@ -81,3 +81,39 @@ export interface NullWeightsResponse {
   az_cut: PatternCut | null;
   el_cut: PatternCut | null;
 }
+
+export interface NullDepthVsBitsRequest {
+  freq_hz: number;
+  panel_size_m: number;
+  lattice: LatticeType;
+  spacing_m?: number | null;
+  element_k_lambda: number;
+  steer_az_deg: number;
+  steer_el_deg: number;
+  taper: TaperType;
+  jammer_azels: AzEl[];
+  diag_load?: number;
+  bit_settings: number[];
+  include_continuous: boolean;
+}
+
+export interface BitSettingResult {
+  label: string;
+  bits: number | null;
+  desired_gain_mag: number;
+  jammer_response_mag: number[];
+  null_depth_db: number[];
+  worst_null_depth_db: number;
+}
+
+export interface NullDepthSummary {
+  continuous_worst_null_db: number;
+  best_quantized_worst_null_db: number | null;
+  best_quantized_label: string | null;
+}
+
+export interface NullDepthVsBitsResponse {
+  results: BitSettingResult[];
+  jammer_labels: string[];
+  summary: NullDepthSummary;
+}
