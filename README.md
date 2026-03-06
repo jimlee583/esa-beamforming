@@ -230,6 +230,11 @@ curl -s http://localhost:8000/api/weights \
 
 **Response fields:** `n_elements`, `positions` (m), `phases_rad`, `weights_re_im` ([[re,im],...]), `spacing_m`, `spacing_lambda`.
 
+**Spacing notes:**
+- `element_k_lambda` defaults to `0.5` (`lambda/2`) but is not capped at `1.0`.
+- Values above `1.0` are intentionally supported.
+- Larger spacing can produce grating lobes; this is expected behavior.
+
 ### `POST /api/pattern`
 
 Compute array factor pattern cuts.

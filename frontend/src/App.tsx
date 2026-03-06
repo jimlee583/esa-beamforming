@@ -172,12 +172,11 @@ function App() {
           </label>
 
           <label>
-            Spacing (k&middot;&lambda;)
+            Spacing (k&middot;&lambda;, &gt;1 allowed; grating lobes expected)
             <input
               type="number"
               step="0.05"
               min="0.1"
-              max="1.0"
               value={form.element_k_lambda}
               onChange={(e) =>
                 set("element_k_lambda", parseFloat(e.target.value))
