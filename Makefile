@@ -15,7 +15,7 @@ install: install-backend install-frontend
 # ── Run ─────────────────────────────────────────────────────────────────────
 
 backend:
-	cd backend && uv run uvicorn app.main:app --reload --port 8000
+	cd backend && uv run uvicorn app.main:app --reload --reload-dir . --reload-dir ../array_engine --port 8000
 
 frontend:
 	cd frontend && npm run dev

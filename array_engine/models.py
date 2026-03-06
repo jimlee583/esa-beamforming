@@ -41,8 +41,7 @@ class WeightsRequest(BaseModel):
     element_k_lambda: float = Field(
         0.5,
         gt=0,
-        le=1.0,
-        description="Element spacing as a fraction of wavelength (default λ/2)",
+        description="Element spacing as a fraction of wavelength (default 0.5; values >1 allowed)",
     )
     steer_az_deg: float = Field(0.0, description="Steering azimuth in degrees")
     steer_el_deg: float = Field(0.0, description="Steering elevation in degrees")

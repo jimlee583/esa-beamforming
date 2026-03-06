@@ -22,6 +22,17 @@ class TestRectangularLattice:
         _pos, d = rectangular_lattice(10e9, panel_size_m=0.1, spacing_m=0.02)
         assert abs(d - 0.02) < 1e-15
 
+    def test_superlambda_spacing_supported(self):
+        freq_hz = 10e9
+        element_k_lambda = 1.2
+        _pos, d = rectangular_lattice(
+            freq_hz,
+            panel_size_m=0.1,
+            element_k_lambda=element_k_lambda,
+        )
+        wavelength_m = 299_792_458.0 / freq_hz
+        assert abs(d / wavelength_m - element_k_lambda) < 1e-12
+
     def test_element_count_reasonable(self):
         pos, d = rectangular_lattice(10e9, panel_size_m=1.0)
         n_per_side = int(1.0 / d) + 1

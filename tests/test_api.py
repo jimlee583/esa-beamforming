@@ -59,6 +59,24 @@ class TestWeightsEndpoint:
         phases = data["phases_rad"]
         assert not all(abs(p) < 1e-10 for p in phases)
 
+    def test_accepts_superlambda_spacing(self):
+        body = {**PAYLOAD, "element_k_lambda": 1.2}
+        r = client.post("/api/weights", json=body)
+        assert r.status_code == 200
+        data = r.json()
+        assert abs(data["spacing_lambda"] - 1.2) < 1e-6
+
+    def test_spacing_m_overrides_element_k_lambda(self):
+        body = {**PAYLOAD, "element_k_lambda": 1.5, "spacing_m": 0.01}
+        r = client.post("/api/weights", json=body)
+        assert r.status_code == 200
+        data = r.json()
+
+        wavelength_m = 299_792_458.0 / body["freq_hz"]
+        expected_spacing_lambda = body["spacing_m"] / wavelength_m
+        assert abs(data["spacing_m"] - body["spacing_m"]) < 1e-12
+        assert abs(data["spacing_lambda"] - expected_spacing_lambda) < 1e-6
+
 
 class TestPatternEndpoint:
     def test_pattern(self):
