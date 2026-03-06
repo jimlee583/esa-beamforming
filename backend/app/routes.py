@@ -20,7 +20,7 @@ from array_engine.models import (
 )
 from array_engine.nulling import compute_lcmv_weights
 from array_engine.pattern import pattern_cut
-from array_engine.steering import steering_phases, steering_weights
+from array_engine.steering import quantize_phase, steering_phases, steering_weights
 
 router = APIRouter()
 
@@ -56,7 +56,7 @@ def compute_weights(req: WeightsRequest) -> WeightsResponse:
     c = 299_792_458.0
     lam = c / req.freq_hz
 
-    return WeightsResponse(
+    resp = WeightsResponse(
         n_elements=len(positions),
         positions=positions.tolist(),
         phases_rad=phases.tolist(),
@@ -64,6 +64,24 @@ def compute_weights(req: WeightsRequest) -> WeightsResponse:
         spacing_m=d,
         spacing_lambda=d / lam,
     )
+
+    if req.phase_bits is not None:
+        q_phases = quantize_phase(phases, req.phase_bits)
+        q_weights = steering_weights(
+            positions,
+            req.freq_hz,
+            req.steer_az_deg,
+            req.steer_el_deg,
+            req.taper.value,
+            phase_bits=req.phase_bits,
+        )
+        resp.phase_bits = req.phase_bits
+        resp.quantized_phases_rad = q_phases.tolist()
+        resp.quantized_weights_re_im = [
+            [float(w.real), float(w.imag)] for w in q_weights
+        ]
+
+    return resp
 
 
 @router.post("/pattern", response_model=PatternResponse)
@@ -99,11 +117,10 @@ def compute_pattern(req: PatternRequest) -> PatternResponse:
         n_points=req.n_points,
     )
 
-    # Find peak direction from the az cut
     az_peak_idx = int(np.argmax(az_gain))
     el_peak_idx = int(np.argmax(el_gain))
 
-    return PatternResponse(
+    resp = PatternResponse(
         az_cut=PatternCutModel(
             angles_deg=az_angles.tolist(),
             gain_db=az_gain.tolist(),
@@ -120,6 +137,47 @@ def compute_pattern(req: PatternRequest) -> PatternResponse:
         n_elements=len(positions),
         spacing_lambda=d / lam,
     )
+
+    if req.phase_bits is not None:
+        q_weights = steering_weights(
+            positions,
+            req.freq_hz,
+            req.steer_az_deg,
+            req.steer_el_deg,
+            req.taper.value,
+            phase_bits=req.phase_bits,
+        )
+        q_az_angles, q_az_gain = pattern_cut(
+            positions,
+            q_weights,
+            req.freq_hz,
+            sweep="az",
+            fixed_deg=req.steer_el_deg,
+            sweep_range_deg=req.az_range_deg,
+            n_points=req.n_points,
+        )
+        q_el_angles, q_el_gain = pattern_cut(
+            positions,
+            q_weights,
+            req.freq_hz,
+            sweep="el",
+            fixed_deg=req.steer_az_deg,
+            sweep_range_deg=req.el_range_deg,
+            n_points=req.n_points,
+        )
+        resp.phase_bits = req.phase_bits
+        resp.quantized_az_cut = PatternCutModel(
+            angles_deg=q_az_angles.tolist(),
+            gain_db=q_az_gain.tolist(),
+            label=f"Az cut quantized ({req.phase_bits}-bit)",
+        )
+        resp.quantized_el_cut = PatternCutModel(
+            angles_deg=q_el_angles.tolist(),
+            gain_db=q_el_gain.tolist(),
+            label=f"El cut quantized ({req.phase_bits}-bit)",
+        )
+
+    return resp
 
 
 @router.post("/null_weights", response_model=NullWeightsResponse)
