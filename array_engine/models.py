@@ -168,3 +168,62 @@ class NullDepthVsBitsResponse(BaseModel):
     results: list[BitSettingResultModel]
     jammer_labels: list[str]
     summary: NullDepthSummary
+
+
+# ── AOA geolocation ────────────────────────────────────────────────────────
+
+
+class AOAGeolocationRequest(WeightsRequest):
+    """Single-jammer AOA geolocation via synthetic beam scan.
+
+    Inherits array parameters from ``WeightsRequest``.  The inherited
+    ``steer_az_deg`` / ``steer_el_deg`` fields are unused — the jammer
+    direction drives the scan instead.
+    """
+
+    jammer_az_deg: float = Field(..., description="True jammer azimuth in body frame (degrees)")
+    jammer_el_deg: float = Field(..., description="True jammer elevation in body frame (degrees)")
+    platform_lat_deg: float = Field(
+        ..., ge=-90, le=90, description="Platform geodetic latitude (degrees)"
+    )
+    platform_lon_deg: float = Field(
+        ..., ge=-180, le=180, description="Platform geodetic longitude (degrees)"
+    )
+    platform_alt_m: float = Field(
+        ..., gt=0, description="Platform altitude above sea level (metres)"
+    )
+    scan_az_range_deg: float = Field(
+        60.0, gt=0, le=180, description="Half-span of azimuth scan (degrees)"
+    )
+    scan_el_range_deg: float = Field(
+        60.0, gt=0, le=180, description="Half-span of elevation scan (degrees)"
+    )
+    scan_n_az: int = Field(181, ge=10, le=721, description="Azimuth scan grid points")
+    scan_n_el: int = Field(181, ge=10, le=721, description="Elevation scan grid points")
+
+
+class AOAGeolocationResponse(BaseModel):
+    """Result of single-jammer AOA geolocation."""
+
+    estimated_az_deg: float
+    estimated_el_deg: float
+    los_body: list[float] = Field(..., description="LOS unit vector in body frame [x, y, z]")
+    los_ecef: list[float] = Field(..., description="LOS unit vector in ECEF [x, y, z]")
+    platform_ecef: list[float] = Field(
+        ..., description="Platform position in ECEF [x, y, z] (metres)"
+    )
+    intersection_found: bool
+    intersection_ecef: list[float] | None = Field(
+        None, description="Ground intersection in ECEF [x, y, z] (metres)"
+    )
+    intersection_lat_deg: float | None = None
+    intersection_lon_deg: float | None = None
+    n_elements: int
+    spacing_m: float
+    spacing_lambda: float
+    peak_power_db: float
+    ambiguity_margin_db: float = Field(
+        ..., description="dB margin between main peak and strongest sidelobe"
+    )
+    az_cut: PatternCut
+    el_cut: PatternCut

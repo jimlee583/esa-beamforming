@@ -1,4 +1,6 @@
 import type {
+  AOAGeolocationRequest,
+  AOAGeolocationResponse,
   NullDepthVsBitsRequest,
   NullDepthVsBitsResponse,
   NullWeightsRequest,
@@ -40,4 +42,10 @@ export function computeNullDepthVsBits(
   req: NullDepthVsBitsRequest,
 ): Promise<NullDepthVsBitsResponse> {
   return post<NullDepthVsBitsResponse>("/null_depth_vs_bits", req);
+}
+
+export function aoaGeolocate(
+  req: AOAGeolocationRequest,
+): Promise<AOAGeolocationResponse> {
+  return post<AOAGeolocationResponse>("/aoa_geolocate", req);
 }
