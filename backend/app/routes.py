@@ -6,8 +6,11 @@ import numpy as np
 from fastapi import APIRouter
 
 from array_engine.analysis import compute_null_depth_vs_phase_bits
+from array_engine.geolocation import aoa_geolocate
 from array_engine.geometry import rectangular_lattice, triangular_lattice
 from array_engine.models import (
+    AOAGeolocationRequest,
+    AOAGeolocationResponse,
     BitSettingResultModel,
     LatticeType,
     NullDepthSummary,
@@ -280,5 +283,58 @@ def null_depth_vs_bits(req: NullDepthVsBitsRequest) -> NullDepthVsBitsResponse:
             continuous_worst_null_db=analysis.continuous_worst_null_db,
             best_quantized_worst_null_db=analysis.best_quantized_worst_null_db,
             best_quantized_label=analysis.best_quantized_label,
+        ),
+    )
+
+
+@router.post("/aoa_geolocate", response_model=AOAGeolocationResponse)
+def aoa_geolocate_endpoint(req: AOAGeolocationRequest) -> AOAGeolocationResponse:
+    positions, d = _build_array(req)
+
+    c = 299_792_458.0
+    lam = c / req.freq_hz
+
+    result = aoa_geolocate(
+        positions,
+        req.freq_hz,
+        req.jammer_az_deg,
+        req.jammer_el_deg,
+        req.platform_lat_deg,
+        req.platform_lon_deg,
+        req.platform_alt_m,
+        scan_az_range_deg=req.scan_az_range_deg,
+        scan_el_range_deg=req.scan_el_range_deg,
+        scan_n_az=req.scan_n_az,
+        scan_n_el=req.scan_n_el,
+        taper=req.taper.value,
+        spacing_m=d,
+    )
+
+    return AOAGeolocationResponse(
+        estimated_az_deg=result.estimated_az_deg,
+        estimated_el_deg=result.estimated_el_deg,
+        los_body=result.los_body.tolist(),
+        los_ecef=result.los_ecef.tolist(),
+        platform_ecef=result.platform_ecef.tolist(),
+        intersection_found=result.intersection_found,
+        intersection_ecef=(
+            result.intersection_ecef.tolist() if result.intersection_ecef is not None else None
+        ),
+        intersection_lat_deg=result.intersection_lat_deg,
+        intersection_lon_deg=result.intersection_lon_deg,
+        n_elements=result.n_elements,
+        spacing_m=result.spacing_m,
+        spacing_lambda=d / lam,
+        peak_power_db=result.peak_power_db,
+        ambiguity_margin_db=result.ambiguity_margin_db,
+        az_cut=PatternCutModel(
+            angles_deg=result.az_cut_angles_deg.tolist(),
+            gain_db=result.az_cut_power_db.tolist(),
+            label=f"Az cut (el={result.estimated_el_deg:.1f}\u00b0)",
+        ),
+        el_cut=PatternCutModel(
+            angles_deg=result.el_cut_angles_deg.tolist(),
+            gain_db=result.el_cut_power_db.tolist(),
+            label=f"El cut (az={result.estimated_az_deg:.1f}\u00b0)",
         ),
     )

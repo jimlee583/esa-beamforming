@@ -14,8 +14,11 @@ az/el are converted to u via :func:`steering.azel_to_unit_vector`.
 """
 
 from array_engine.analysis import compute_null_depth_vs_phase_bits
+from array_engine.geolocation import aoa_geolocate
 from array_engine.geometry import rectangular_lattice, triangular_lattice
 from array_engine.models import (
+    AOAGeolocationRequest,
+    AOAGeolocationResponse,
     NullDepthVsBitsRequest,
     NullDepthVsBitsResponse,
     NullWeightsRequest,
@@ -36,6 +39,8 @@ from array_engine.steering import (
 )
 
 __all__ = [
+    "AOAGeolocationRequest",
+    "AOAGeolocationResponse",
     "NullDepthVsBitsRequest",
     "NullDepthVsBitsResponse",
     "NullWeightsRequest",
@@ -45,6 +50,7 @@ __all__ = [
     "PatternResponse",
     "WeightsRequest",
     "WeightsResponse",
+    "aoa_geolocate",
     "array_factor",
     "azel_to_unit_vector",
     "compute_lcmv_weights",

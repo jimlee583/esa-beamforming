@@ -117,3 +117,40 @@ export interface NullDepthVsBitsResponse {
   jammer_labels: string[];
   summary: NullDepthSummary;
 }
+
+export interface AOAGeolocationRequest {
+  freq_hz: number;
+  panel_size_m: number;
+  lattice: LatticeType;
+  spacing_m?: number | null;
+  element_k_lambda: number;
+  taper: TaperType;
+  jammer_az_deg: number;
+  jammer_el_deg: number;
+  platform_lat_deg: number;
+  platform_lon_deg: number;
+  platform_alt_m: number;
+  scan_az_range_deg?: number;
+  scan_el_range_deg?: number;
+  scan_n_az?: number;
+  scan_n_el?: number;
+}
+
+export interface AOAGeolocationResponse {
+  estimated_az_deg: number;
+  estimated_el_deg: number;
+  los_body: number[];
+  los_ecef: number[];
+  platform_ecef: number[];
+  intersection_found: boolean;
+  intersection_ecef: number[] | null;
+  intersection_lat_deg: number | null;
+  intersection_lon_deg: number | null;
+  n_elements: number;
+  spacing_m: number;
+  spacing_lambda: number;
+  peak_power_db: number;
+  ambiguity_margin_db: number;
+  az_cut: PatternCut;
+  el_cut: PatternCut;
+}
